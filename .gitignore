@@ -1,10 +1,55 @@
 # Python-generated files
 __pycache__/
 *.py[oc]
+*.pyo
+*.pyd
 build/
 dist/
 wheels/
 *.egg-info
+*.egg
+.pytest_cache/
+.ruff_cache/
 
 # Virtual environments
 .venv
+venv/
+ENV/
+env/
+
+# Environment variables
+.env
+!.env.example
+
+# Database
+*.sqlite3
+*.db
+db.sqlite3
+
+# Django
+*.log
+staticfiles/
+media/
+local_settings.py
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# UV lock file (optional, comment out if you want to commit it)
+# uv.lock
