@@ -10,7 +10,7 @@ This web-based App is used as a test to qualify as Junior Programmer in Fast Pri
 - **Django REST Framework 3.16.1**: Powerful toolkit for building Web APIs
 
 ### Database
-- **psycopg2-binary 2.9.11**: PostgreSQL database adapter for Python
+- **psycopg2-binary 2.9.11**: PostgreSQL database adapter for Python (For Production)
 
 ### Form & Filter
 - **django-crispy-forms 2.5**: Enhanced form rendering with Bootstrap support
