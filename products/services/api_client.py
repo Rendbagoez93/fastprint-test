@@ -16,24 +16,25 @@ class FastprintAPIClient:
     def _generate_username(self) -> str:
         """
         Generate username based on current server time.
-        Format: tesprogrammer{DD}{MM}{YY}C10
-        Example: tesprogrammer280126C10 for January 28, 2026
+        Format: tesprogrammer{DD}{MM}{YY}C17
+        Example: tesprogrammer280126C17 for January 28, 2026
         """
         now = datetime.now()
         day = now.strftime("%d")
         month = now.strftime("%m")
         year = now.strftime("%y")
-        return f"tesprogrammer{day}{month}{year}C10"
+        return f"tesprogrammer{day}{month}{year}C17"
     
     def _generate_password(self) -> str:
         """
         Generate MD5 hashed password based on current date.
-        Format: MD5(bisacoding-{day}-{month}-{year})
+        Format: MD5(bisacoding-{day}-{month_with_zero}-{year})
         Example: MD5(bisacoding-28-01-26) for January 28, 2026
+        Note: Month must have leading zero, day and year do not
         """
         now = datetime.now()
         day = now.day
-        month = now.month
+        month = now.strftime("%m")  # Month with leading zero
         year = now.year % 100  # Last 2 digits of year
         
         password_plain = f"bisacoding-{day}-{month}-{year}"
@@ -63,12 +64,6 @@ class FastprintAPIClient:
             return None
     
     def get_credentials(self) -> Dict[str, str]:
-        """
-        Get current credentials being used.
-        
-        Returns:
-            Dictionary with username and password
-        """
         return {
             'username': self.username,
             'password': self.password

@@ -32,6 +32,12 @@ class ProductImportService:
         self.api_client = api_client or FastprintAPIClient()
     
     def fetch_and_import(self) -> ImportResult:
+        """
+        Fetch data from API and import into database.
+        
+        Returns:
+            ImportResult with success status, message, and statistics
+        """
         # Fetch data from API
         api_data = self.api_client.fetch_data()
         
@@ -41,8 +47,18 @@ class ProductImportService:
                 message="Failed to fetch data from API"
             )
         
+        # Check for API errors
+        if isinstance(api_data, dict) and api_data.get('error') == 1:
+            return ImportResult(
+                success=False,
+                message=f"API Error: {api_data.get('ket', 'Unknown error')}"
+            )
+        
+        # Transform API response to expected format
+        transformed_data = self._transform_api_response(api_data)
+        
         # Import data into database
-        return self.import_data(api_data)
+        return self.import_data(transformed_data)
     
     def import_data(self, data: Dict[str, Any]) -> ImportResult:
         # Validate data structure
@@ -95,16 +111,93 @@ class ProductImportService:
                 stats=stats
             )
     
+    def _transform_api_response(self, api_data: Dict[str, Any]) -> Dict[str, List]:
+        """
+        Transform API response from flat structure to normalized structure.
+        
+        API returns:
+        {
+            "error": 0,
+            "version": "...",
+            "data": [
+                {
+                    "id_produk": "6",
+                    "nama_produk": "...",
+                    "kategori": "L QUEENLY",
+                    "harga": "12500",
+                    "status": "bisa dijual"
+                }
+            ]
+        }
+        
+        Transform to:
+        {
+            "kategori": [{"id_kategori": 1, "nama_kategori": "L QUEENLY"}],
+            "status": [{"id_status": 1, "nama_status": "bisa dijual"}],
+            "produk": [{"id_produk": 6, "nama_produk": "...", "kategori_id": 1, "status_id": 1, "harga": 12500}]
+        }
+        """
+        products_data = api_data.get('data', [])
+        
+        # Extract unique categories and statuses
+        kategori_map = {}  # {nama_kategori: id_kategori}
+        status_map = {}    # {nama_status: id_status}
+        
+        kategori_id_counter = 1
+        status_id_counter = 1
+        
+        for product in products_data:
+            # Extract kategori
+            kategori_name = product.get('kategori', '').strip()
+            if kategori_name and kategori_name not in kategori_map:
+                kategori_map[kategori_name] = kategori_id_counter
+                kategori_id_counter += 1
+            
+            # Extract status
+            status_name = product.get('status', '').strip()
+            if status_name and status_name not in status_map:
+                status_map[status_name] = status_id_counter
+                status_id_counter += 1
+        
+        # Build kategori list
+        kategori_list = [
+            {'id_kategori': id_kat, 'nama_kategori': nama_kat}
+            for nama_kat, id_kat in kategori_map.items()
+        ]
+        
+        # Build status list
+        status_list = [
+            {'id_status': id_stat, 'nama_status': nama_stat}
+            for nama_stat, id_stat in status_map.items()
+        ]
+        
+        # Build produk list with foreign key references
+        produk_list = []
+        for product in products_data:
+            try:
+                kategori_name = product.get('kategori', '').strip()
+                status_name = product.get('status', '').strip()
+                
+                if not kategori_name or not status_name:
+                    continue
+                
+                produk_list.append({
+                    'id_produk': int(product.get('id_produk', 0)),
+                    'nama_produk': product.get('nama_produk', '').strip(),
+                    'harga': product.get('harga', '0'),
+                    'kategori_id': kategori_map[kategori_name],
+                    'status_id': status_map[status_name]
+                })
+            except (ValueError, KeyError):
+                continue
+        
+        return {
+            'kategori': kategori_list,
+            'status': status_list,
+            'produk': produk_list
+        }
+    
     def _validate_data(self, data: Dict[str, Any]) -> Tuple[bool, str]:
-        """
-        Validate the structure of API data.
-        
-        Args:
-            data: Dictionary to validate
-        
-        Returns:
-            Tuple of (is_valid, error_message)
-        """
         if not isinstance(data, dict):
             return False, "Data must be a dictionary"
         
@@ -118,15 +211,6 @@ class ProductImportService:
         return True, ""
     
     def _import_kategori(self, kategori_list: List[Dict]) -> Dict[str, int]:
-        """
-        Import kategori data with duplicate prevention.
-        
-        Args:
-            kategori_list: List of kategori dictionaries
-        
-        Returns:
-            Dictionary with 'created' and 'skipped' counts
-        """
         created = 0
         skipped = 0
         
@@ -151,15 +235,6 @@ class ProductImportService:
         return {'created': created, 'skipped': skipped}
     
     def _import_status(self, status_list: List[Dict]) -> Dict[str, int]:
-        """
-        Import status data with duplicate prevention.
-        
-        Args:
-            status_list: List of status dictionaries
-        
-        Returns:
-            Dictionary with 'created' and 'skipped' counts
-        """
         created = 0
         skipped = 0
         
@@ -184,15 +259,6 @@ class ProductImportService:
         return {'created': created, 'skipped': skipped}
     
     def _import_produk(self, produk_list: List[Dict]) -> Dict[str, int]:
-        """
-        Import produk data with duplicate prevention and foreign key validation.
-        
-        Args:
-            produk_list: List of produk dictionaries
-        
-        Returns:
-            Dictionary with 'created' and 'skipped' counts
-        """
         created = 0
         skipped = 0
         
