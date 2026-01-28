@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="bi bi-pencil-square"></i> {{ title }}</h1>
+            <a href="{% url 'produk_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Kembali
+            </a>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
+                        </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label for="{{ form.nama_produk.id_for_label }}" class="form-label">
+                            {{ form.nama_produk.label }} <span class="text-danger">*</span>
+                        </label>
+                        {{ form.nama_produk }}
+                        {% if form.nama_produk.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.nama_produk.errors.0 }}
+                            </div>
+                        {% endif %}
+                        <small class="form-text text-muted">Nama produk wajib diisi.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.harga.id_for_label }}" class="form-label">
+                            {{ form.harga.label }} <span class="text-danger">*</span>
+                        </label>
+                        {{ form.harga }}
+                        {% if form.harga.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.harga.errors.0 }}
+                            </div>
+                        {% endif %}
+                        <small class="form-text text-muted">Harga harus berupa angka positif.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.kategori.id_for_label }}" class="form-label">
+                            {{ form.kategori.label }} <span class="text-danger">*</span>
+                        </label>
+                        {{ form.kategori }}
+                        {% if form.kategori.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.kategori.errors.0 }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.status.id_for_label }}" class="form-label">
+                            {{ form.status.label }} <span class="text-danger">*</span>
+                        </label>
+                        {{ form.status }}
+                        {% if form.status.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.status.errors.0 }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> {{ action }}
+                        </button>
+                        <a href="{% url 'produk_list' %}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Batal
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

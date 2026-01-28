@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="bi bi-box"></i> Detail Produk</h1>
+            <a href="{% url 'produk_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Kembali
+            </a>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">{{ produk.nama_produk }}</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tbody>
+                        <tr>
+                            <th width="30%">ID Produk:</th>
+                            <td>{{ produk.id_produk }}</td>
+                        </tr>
+                        <tr>
+                            <th>Nama Produk:</th>
+                            <td>{{ produk.nama_produk }}</td>
+                        </tr>
+                        <tr>
+                            <th>Harga:</th>
+                            <td>
+                                <strong class="text-success">Rp {{ produk.harga|floatformat:2 }}</strong>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Kategori:</th>
+                            <td>
+                                <span class="badge bg-info">{{ produk.kategori.nama_kategori }}</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Status:</th>
+                            <td>
+                                <span class="badge bg-success">{{ produk.status.nama_status }}</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-footer">
+                <div class="d-flex gap-2">
+                    <a href="{% url 'produk_update' produk.id_produk %}" class="btn btn-warning">
+                        <i class="bi bi-pencil"></i> Edit
+                    </a>
+                    <a href="{% url 'produk_delete' produk.id_produk %}" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> Hapus
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

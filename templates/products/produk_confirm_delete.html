@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6 mx-auto">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="bi bi-exclamation-triangle text-danger"></i> Hapus Produk</h1>
+            <a href="{% url 'produk_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Kembali
+            </a>
+        </div>
+
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">Konfirmasi Penghapusan</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    Apakah Anda yakin ingin menghapus produk ini?
+                </div>
+
+                <table class="table table-borderless">
+                    <tbody>
+                        <tr>
+                            <th width="40%">ID Produk:</th>
+                            <td>{{ produk.id_produk }}</td>
+                        </tr>
+                        <tr>
+                            <th>Nama Produk:</th>
+                            <td><strong>{{ produk.nama_produk }}</strong></td>
+                        </tr>
+                        <tr>
+                            <th>Harga:</th>
+                            <td>Rp {{ produk.harga|floatformat:2 }}</td>
+                        </tr>
+                        <tr>
+                            <th>Kategori:</th>
+                            <td>{{ produk.kategori.nama_kategori }}</td>
+                        </tr>
+                        <tr>
+                            <th>Status:</th>
+                            <td>{{ produk.status.nama_status }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash"></i> Ya, Hapus
+                        </button>
+                        <a href="{% url 'produk_list' %}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Batal
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
