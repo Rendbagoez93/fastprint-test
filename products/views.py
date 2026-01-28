@@ -8,20 +8,30 @@ from products.forms import ProdukForm
 
 def produk_list(request):
     """
-    Display list of products with status 'bisa dijual' only.
+    Display list of products with optional status filter.
     """
-    # Get 'bisa dijual' status
-    try:
-        bisa_dijual_status = Status.objects.get(nama_status__iexact='bisa dijual')
-        produk_list = Produk.objects.filter(status=bisa_dijual_status).select_related('kategori', 'status')
-    except Status.DoesNotExist:
-        # If status doesn't exist, show all products
-        produk_list = Produk.objects.all().select_related('kategori', 'status')
-        messages.warning(request, 'Status "bisa dijual" tidak ditemukan. Menampilkan semua produk.')
+    # Get filter parameter from URL (?show=all or default to bisa_dijual)
+    show_filter = request.GET.get('show', 'bisa_dijual')
+    
+    # Get all products with related data
+    produk_list = Produk.objects.all().select_related('kategori', 'status')
+    
+    # Apply filter if not showing all
+    if show_filter != 'all':
+        try:
+            bisa_dijual_status = Status.objects.get(nama_status__iexact='bisa dijual')
+            produk_list = produk_list.filter(status=bisa_dijual_status)
+            title = 'Daftar Produk - Bisa Dijual'
+        except Status.DoesNotExist:
+            messages.warning(request, 'Status "bisa dijual" tidak ditemukan. Menampilkan semua produk.')
+            title = 'Daftar Produk - Semua'
+    else:
+        title = 'Daftar Produk - Semua'
     
     context = {
         'produk_list': produk_list,
-        'title': 'Daftar Produk - Bisa Dijual'
+        'title': title,
+        'show_filter': show_filter,
     }
     return render(request, 'products/produk_list.html', context)
 
@@ -70,7 +80,8 @@ def produk_update(request, pk):
         if form.is_valid():
             produk = form.save()
             messages.success(request, f'Produk "{produk.nama_produk}" berhasil diperbarui!')
-            return redirect('produk_list')
+            # Redirect to detail page to show the updated product
+            return redirect('produk_detail', pk=produk.pk)
     else:
         form = ProdukForm(instance=produk)
     
