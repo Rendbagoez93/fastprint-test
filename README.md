@@ -48,48 +48,6 @@ The application performs the following:
 
 ---
 
-## Project Structure
-
-fastprint_test/                  # project root
-├── manage.py
-├── config/
-│   ├── __init__.py
-│   ├── asgi.py
-│   ├── wsgi.py
-│   ├── urls.py
-│   └── settings/
-│       ├── __init__.py
-│       ├── base.py
-│       ├── local.py
-│       └── production.py
-├── products/
-│   ├── __init__.py
-│   ├── admin.py
-│   ├── apps.py
-│   ├── models.py
-│   ├── views.py
-│   ├── forms.py
-│   ├── serializers.py
-│   ├── urls.py
-│   ├── tests.py
-│   ├── migrations/
-│   │   └── __init__.py
-│   ├── services/
-│   │   ├── __init__.py
-│   │   ├── api_client.py
-│   │   └── import_products.py
-│   └── management/
-│       ├── __init__.py
-│       └── commands/
-│           ├── __init__.py
-│           └── import_products.py
-├── pyproject.toml
-|── requirements.txt
-├── .env.example
-└── README.md
-
----
-
 ## Setup & Instalation
 
 1. Clone repository
