@@ -1,5 +1,5 @@
 """
-Test the updated API client
+Test the API client
 """
 
 import sys

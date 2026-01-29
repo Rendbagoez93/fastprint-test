@@ -1,8 +1,11 @@
 # Test Junior Programmer – Product Management
 
+## Author 
+Created by : Rendy Herdianto
+---
+
 This project is a solution for the **Junior Programmer Test**.
-The application fetches product data from an external API, stores it in a database,
-and provides CRUD functionality with filtering based on product status.
+The application fetches product data from an external API, stores it in a database, and provides CRUD functionality with filtering based on product status.
 
 ---
 
@@ -21,8 +24,8 @@ The application performs the following:
 - Python 3.13
 - Django 
 - Django REST Framework (Serializer usage)
-- PostgreSQL (production-ready) & SQLite (local development)
-- django-environ
+- SQLite (local development) & PostgreSQL (production-ready)
+- django-environ 
 - django-filter
 - django-crispy-forms
 - uv (virtual environment)
@@ -70,14 +73,15 @@ DJANGO_SETTINGS_MODULE=config.settings.local
 
 ### Database Choice
 
-SQLite was used for local development to simplify setup and speed up development.
-The application uses Django ORM and environment-based configuration, so switching
-to PostgreSQL or MySQL requires only a database configuration change. 
+SQLite was used for local development to simplify setup and speed up development. 
+
+The application uses Django ORM and environment-based configuration, so switching to PostgreSQL or MySQL requires only a database configuration change. Connection settings are managed via environment variables using django-environ.
 
 ### Database Setup
 
-This project uses PostgreSQL as the database. Connection settings are managed
-via environment variables using django-environ. Run migrations after configuring the database:
+Create New Directory first to contain any logging info related to this app, using this command in cmd -> 'mkdir logs'
+
+Then run migrations after configuring .env:
 
 python manage.py migrate
 
@@ -111,10 +115,6 @@ http://127.0.0.1:8000/
 ## Notes & Assumption
 
 - SQLite is used for local development for simplicity
-- PostgreSQL configuration is prepared for production use
-- API access was verified manually (headers, response, cookies) before integration
+- PostgreSQL configuration is already prepared for production use
+- API access was verified using test file in products/tests/ directory. (HEADER, COOKIES, and RESPONSE)
 - Management command is used to ensure clean and repeatable data import 
-
-## Author 
-
-Created by : Rendy Herdianto
