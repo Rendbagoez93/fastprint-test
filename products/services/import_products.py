@@ -1,9 +1,12 @@
 from django.db import transaction
-from typing import Dict, List, Any, Tuple
+from typing import Dict, List, Any
 from decimal import Decimal, InvalidOperation
+import logging
 
 from products.models import Kategori, Status, Produk
 from products.services.api_client import FastprintAPIClient
+
+logger = logging.getLogger('products')
 
 
 class ImportResult:
@@ -38,10 +41,13 @@ class ProductImportService:
         Returns:
             ImportResult with success status, message, and statistics
         """
+        logger.info("Starting product import from external API")
+        
         # Fetch data from API
         api_data = self.api_client.fetch_data()
         
         if api_data is None:
+            logger.error("Failed to fetch data from API")
             return ImportResult(
                 success=False,
                 message="Failed to fetch data from API"
@@ -49,257 +55,193 @@ class ProductImportService:
         
         # Check for API errors
         if isinstance(api_data, dict) and api_data.get('error') == 1:
+            error_msg = f"API Error: {api_data.get('ket', 'Unknown error')}"
+            logger.error(error_msg)
             return ImportResult(
                 success=False,
-                message=f"API Error: {api_data.get('ket', 'Unknown error')}"
+                message=error_msg
             )
+        
+        logger.info("Successfully fetched data from API")
         
         # Transform API response to expected format
         transformed_data = self._transform_api_response(api_data)
+        logger.info(f"Transformed data: {len(transformed_data.get('kategori', []))} categories, "
+                   f"{len(transformed_data.get('status', []))} statuses, "
+                   f"{len(transformed_data.get('produk', []))} products")
         
         # Import data into database
-        return self.import_data(transformed_data)
+        result = self.import_data(transformed_data)
+        
+        if result.success:
+            logger.info(f"Import completed successfully: {result.message}")
+        else:
+            logger.error(f"Import failed: {result.message}")
+        
+        return result
     
     def import_data(self, data: Dict[str, Any]) -> ImportResult:
-        # Validate data structure
-        validation_result = self._validate_data(data)
-        if not validation_result[0]:
-            return ImportResult(success=False, message=validation_result[1])
-        
-        stats = {
-            'kategori_created': 0,
-            'status_created': 0,
-            'produk_created': 0,
-            'kategori_skipped': 0,
-            'status_skipped': 0,
-            'produk_skipped': 0
-        }
+        """Import data into database with transaction support."""
+        error_msg = self._validate_data(data)
+        if error_msg:
+            return ImportResult(success=False, message=error_msg)
         
         try:
-            # Use atomic transaction - all or nothing
             with transaction.atomic():
-                # Import Kategori first (referenced by Produk)
-                kategori_stats = self._import_kategori(data.get('kategori', []))
-                stats['kategori_created'] = kategori_stats['created']
-                stats['kategori_skipped'] = kategori_stats['skipped']
-                
-                # Import Status (referenced by Produk)
-                status_stats = self._import_status(data.get('status', []))
-                stats['status_created'] = status_stats['created']
-                stats['status_skipped'] = status_stats['skipped']
-                
-                # Import Produk last (depends on Kategori and Status)
-                produk_stats = self._import_produk(data.get('produk', []))
-                stats['produk_created'] = produk_stats['created']
-                stats['produk_skipped'] = produk_stats['skipped']
+                kat_stats = self._import_model(
+                    Kategori, data.get('kategori', []), 
+                    'id_kategori', 'nama_kategori'
+                )
+                stat_stats = self._import_model(
+                    Status, data.get('status', []), 
+                    'id_status', 'nama_status'
+                )
+                prod_stats = self._import_produk(data.get('produk', []))
             
-            total_created = (stats['kategori_created'] + 
-                           stats['status_created'] + 
-                           stats['produk_created'])
+            stats = {
+                'kategori_created': kat_stats['created'],
+                'kategori_skipped': kat_stats['skipped'],
+                'status_created': stat_stats['created'],
+                'status_skipped': stat_stats['skipped'],
+                'produk_created': prod_stats['created'],
+                'produk_skipped': prod_stats['skipped']
+            }
             
-            message = (f"Import successful. Created: {total_created} records "
-                      f"(Kategori: {stats['kategori_created']}, "
-                      f"Status: {stats['status_created']}, "
-                      f"Produk: {stats['produk_created']})")
+            total_created = sum([s['created'] for s in [kat_stats, stat_stats, prod_stats]])
+            message = (
+                f"Import successful. Created {total_created} records "
+                f"(Kategori: {kat_stats['created']}, "
+                f"Status: {stat_stats['created']}, "
+                f"Produk: {prod_stats['created']})"
+            )
             
             return ImportResult(success=True, message=message, stats=stats)
             
         except Exception as e:
-            return ImportResult(
-                success=False,
-                message=f"Import failed: {str(e)}",
-                stats=stats
-            )
+            return ImportResult(success=False, message=f"Import failed: {str(e)}")
     
     def _transform_api_response(self, api_data: Dict[str, Any]) -> Dict[str, List]:
-        """
-        Transform API response from flat structure to normalized structure.
-        
-        API returns:
-        {
-            "error": 0,
-            "version": "...",
-            "data": [
-                {
-                    "id_produk": "6",
-                    "nama_produk": "...",
-                    "kategori": "L QUEENLY",
-                    "harga": "12500",
-                    "status": "bisa dijual"
-                }
-            ]
-        }
-        
-        Transform to:
-        {
-            "kategori": [{"id_kategori": 1, "nama_kategori": "L QUEENLY"}],
-            "status": [{"id_status": 1, "nama_status": "bisa dijual"}],
-            "produk": [{"id_produk": 6, "nama_produk": "...", "kategori_id": 1, "status_id": 1, "harga": 12500}]
-        }
-        """
+        """Transform API response from flat structure to normalized structure."""
         products_data = api_data.get('data', [])
+        kategori_map = {}
+        status_map = {}
         
         # Extract unique categories and statuses
-        kategori_map = {}  # {nama_kategori: id_kategori}
-        status_map = {}    # {nama_status: id_status}
-        
-        kategori_id_counter = 1
-        status_id_counter = 1
-        
         for product in products_data:
-            # Extract kategori
-            kategori_name = product.get('kategori', '').strip()
-            if kategori_name and kategori_name not in kategori_map:
-                kategori_map[kategori_name] = kategori_id_counter
-                kategori_id_counter += 1
+            kategori = product.get('kategori', '').strip()
+            status = product.get('status', '').strip()
             
-            # Extract status
-            status_name = product.get('status', '').strip()
-            if status_name and status_name not in status_map:
-                status_map[status_name] = status_id_counter
-                status_id_counter += 1
+            if kategori and kategori not in kategori_map:
+                kategori_map[kategori] = len(kategori_map) + 1
+            if status and status not in status_map:
+                status_map[status] = len(status_map) + 1
         
-        # Build kategori list
+        # Build normalized lists
         kategori_list = [
-            {'id_kategori': id_kat, 'nama_kategori': nama_kat}
-            for nama_kat, id_kat in kategori_map.items()
+            {'id_kategori': id_val, 'nama_kategori': nama} 
+            for nama, id_val in kategori_map.items()
         ]
-        
-        # Build status list
         status_list = [
-            {'id_status': id_stat, 'nama_status': nama_stat}
-            for nama_stat, id_stat in status_map.items()
+            {'id_status': id_val, 'nama_status': nama} 
+            for nama, id_val in status_map.items()
         ]
         
-        # Build produk list with foreign key references
+        # Build product list
         produk_list = []
         for product in products_data:
+            kategori = product.get('kategori', '').strip()
+            status = product.get('status', '').strip()
+            
+            if not (kategori and status):
+                continue
+                
             try:
-                kategori_name = product.get('kategori', '').strip()
-                status_name = product.get('status', '').strip()
-                
-                if not kategori_name or not status_name:
-                    continue
-                
                 produk_list.append({
                     'id_produk': int(product.get('id_produk', 0)),
                     'nama_produk': product.get('nama_produk', '').strip(),
                     'harga': product.get('harga', '0'),
-                    'kategori_id': kategori_map[kategori_name],
-                    'status_id': status_map[status_name]
+                    'kategori_id': kategori_map[kategori],
+                    'status_id': status_map[status]
                 })
             except (ValueError, KeyError):
                 continue
         
         return {
-            'kategori': kategori_list,
-            'status': status_list,
+            'kategori': kategori_list, 
+            'status': status_list, 
             'produk': produk_list
         }
     
-    def _validate_data(self, data: Dict[str, Any]) -> Tuple[bool, str]:
+    def _validate_data(self, data: Dict[str, Any]) -> str:
+        """Validate data structure. Returns error message or empty string if valid."""
         if not isinstance(data, dict):
-            return False, "Data must be a dictionary"
+            return "Data must be a dictionary"
         
-        required_keys = ['kategori', 'status', 'produk']
-        for key in required_keys:
+        for key in ['kategori', 'status', 'produk']:
             if key not in data:
-                return False, f"Missing required key: '{key}'"
+                return f"Missing required key: '{key}'"
             if not isinstance(data[key], list):
-                return False, f"'{key}' must be a list"
+                return f"'{key}' must be a list"
         
-        return True, ""
+        return ""
     
-    def _import_kategori(self, kategori_list: List[Dict]) -> Dict[str, int]:
-        created = 0
-        skipped = 0
+    def _import_model(self, model_class, items: List[Dict], 
+                     id_field: str, name_field: str) -> Dict[str, int]:
+        """Generic import function for simple models (Kategori, Status)."""
+        created = skipped = 0
         
-        for item in kategori_list:
-            id_kategori = item.get('id_kategori')
-            nama_kategori = item.get('nama_kategori')
+        for item in items:
+            id_value = item.get(id_field)
+            name_value = item.get(name_field)
             
-            if not id_kategori or not nama_kategori:
-                continue
-            
-            # Check for duplicates - idempotent behavior
-            if Kategori.objects.filter(id_kategori=id_kategori).exists():
+            if not (id_value and name_value):
                 skipped += 1
                 continue
             
-            Kategori.objects.create(
-                id_kategori=id_kategori,
-                nama_kategori=nama_kategori
+            _, is_created = model_class.objects.get_or_create(
+                **{id_field: id_value},
+                defaults={name_field: name_value}
             )
-            created += 1
-        
-        return {'created': created, 'skipped': skipped}
-    
-    def _import_status(self, status_list: List[Dict]) -> Dict[str, int]:
-        created = 0
-        skipped = 0
-        
-        for item in status_list:
-            id_status = item.get('id_status')
-            nama_status = item.get('nama_status')
             
-            if not id_status or not nama_status:
-                continue
-            
-            # Check for duplicates - idempotent behavior
-            if Status.objects.filter(id_status=id_status).exists():
+            if is_created:
+                created += 1
+            else:
                 skipped += 1
-                continue
-            
-            Status.objects.create(
-                id_status=id_status,
-                nama_status=nama_status
-            )
-            created += 1
         
         return {'created': created, 'skipped': skipped}
     
     def _import_produk(self, produk_list: List[Dict]) -> Dict[str, int]:
-        created = 0
-        skipped = 0
+        """Import products with foreign key validation."""
+        created = skipped = 0
+        required_fields = ['id_produk', 'nama_produk', 'harga', 'kategori_id', 'status_id']
         
         for item in produk_list:
-            id_produk = item.get('id_produk')
-            nama_produk = item.get('nama_produk')
-            harga = item.get('harga')
-            kategori_id = item.get('kategori_id')
-            status_id = item.get('status_id')
-            
             # Validate required fields
-            if not all([id_produk, nama_produk, harga, kategori_id, status_id]):
-                continue
-            
-            # Check for duplicates - idempotent behavior
-            if Produk.objects.filter(id_produk=id_produk).exists():
+            if not all(item.get(f) for f in required_fields):
                 skipped += 1
                 continue
             
-            # Validate and convert harga to Decimal
-            try:
-                harga_decimal = Decimal(str(harga))
-            except (InvalidOperation, ValueError):
+            # Check if product already exists
+            if Produk.objects.filter(id_produk=item['id_produk']).exists():
+                skipped += 1
                 continue
             
-            # Validate foreign keys exist
             try:
-                kategori = Kategori.objects.get(id_kategori=kategori_id)
-                status = Status.objects.get(id_status=status_id)
-            except (Kategori.DoesNotExist, Status.DoesNotExist):
-                # Skip if referenced kategori or status doesn't exist
-                continue
-            
-            Produk.objects.create(
-                id_produk=id_produk,
-                nama_produk=nama_produk,
-                harga=harga_decimal,
-                kategori=kategori,
-                status=status
-            )
-            created += 1
+                # Get foreign key instances
+                kategori = Kategori.objects.get(id_kategori=item['kategori_id'])
+                status = Status.objects.get(id_status=item['status_id'])
+                
+                # Create product
+                Produk.objects.create(
+                    id_produk=item['id_produk'],
+                    nama_produk=item['nama_produk'],
+                    harga=Decimal(str(item['harga'])),
+                    kategori=kategori,
+                    status=status
+                )
+                created += 1
+            except (InvalidOperation, ValueError, Kategori.DoesNotExist, Status.DoesNotExist):
+                skipped += 1
         
         return {'created': created, 'skipped': skipped}
 

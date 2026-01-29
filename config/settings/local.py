@@ -14,6 +14,14 @@ DATABASES = {
     }
 }
 
+# Cache configuration
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'fastprint-cache',
+    }
+}
+
 # Development-specific settings
 INTERNAL_IPS = [
     '127.0.0.1',

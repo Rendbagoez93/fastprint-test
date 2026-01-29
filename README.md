@@ -1,99 +1,162 @@
-# FastPrint Test
+# Test Junior Programmer – Product Management
 
-## Overview
-This web-based App is used as a test to qualify as Junior Programmer in Fast Print Indonesia Surabaya Branch. 
+This project is a solution for the **Junior Programmer Test**.
+The application fetches product data from an external API, stores it in a database,
+and provides CRUD functionality with filtering based on product status.
+
+---
+
+## Project Overview
+
+The application performs the following:
+- Fetch product data from a protected external API
+- Store products, categories, and statuses into a relational database
+- Display products that have status **"bisa dijual"** and **"Semua Produk"**
+- Provide CRUD features with validation and confirmation
+
+---
 
 ## Tech Stack
 
-### Core Framework
-- **Django 6.0.1**: High-level Python web framework for rapid development
-- **Django REST Framework 3.16.1**: Powerful toolkit for building Web APIs
+- Python 3.13
+- Django 
+- Django REST Framework (Serializer usage)
+- PostgreSQL (production-ready) & SQLite (local development)
+- django-environ
+- django-filter
+- django-crispy-forms
+- uv (virtual environment)
+- psycopg2-binary
+- requests
+- pytest
+- pytest-django
+- ruff
+- black
 
-### Database
-- **psycopg2-binary 2.9.11**: PostgreSQL database adapter for Python (For Production)
+---
 
-### Form & Filter
-- **django-crispy-forms 2.5**: Enhanced form rendering with Bootstrap support
-- **django-filter 25.2**: Declarative filtering for Django querysets and REST Framework
+## Features
 
-### Utilities
-- **django-environ 0.12.0**: Environment variable configuration for Django
-- **requests 2.32.5**: HTTP library for consuming external APIs
+- Import products from external API 
+- Product listing filtered by status **"Bisa Dijual"** and **"Semua Produk"
+- Add, edit, and delete products 
+- Form validation:
+  - Product name is required
+  - Price must be a number
+- Delete confirmation alert
+- Environment-based configuration (local & production)
 
-### Development Tools
-- **black 26.1.0**: Python code formatter for consistent code style
-- **ruff 0.14.14**: Fast Python linter and code checker
-- **pytest 9.0.2**: Testing framework for Python
-- **pytest-django 4.11.1**: Django plugin for pytest
-
-## Setup
-
-### Prerequisites
-- Python 3.13+
-- PostgreSQL
-
-### Installation
-
-1. Clone the repository
-2. Copy environment variables:
-   ```bash
-   cp .env.example .env
-   ```
-
-3. Update `.env` with your database credentials
-
-4. Install dependencies:
-   ```bash
-   uv sync
-   ```
-
-5. Run migrations:
-   ```bash
-   python manage.py migrate
-   ```
-
-6. Run the development server:
-   ```bash
-   python manage.py runserver
-   ```
+---
 
 ## Project Structure
 
-```
-fastprint-test/
-├── config/              # Project configuration
-│   ├── settings/        # Settings split by environment
-│   │   ├── base.py      # Base settings
-│   │   ├── local.py     # Development settings
-│   │   └── production.py # Production settings
-│   ├── urls.py          # Main URL configuration
-│   └── wsgi.py          # WSGI configuration
-├── products/            # Products app
-├── static/              # Static files
-├── templates/           # HTML templates
-└── manage.py            # Django management script
-```
+fastprint_test/                  # project root
+├── manage.py
+├── config/
+│   ├── __init__.py
+│   ├── asgi.py
+│   ├── wsgi.py
+│   ├── urls.py
+│   └── settings/
+│       ├── __init__.py
+│       ├── base.py
+│       ├── local.py
+│       └── production.py
+├── products/
+│   ├── __init__.py
+│   ├── admin.py
+│   ├── apps.py
+│   ├── models.py
+│   ├── views.py
+│   ├── forms.py
+│   ├── serializers.py
+│   ├── urls.py
+│   ├── tests.py
+│   ├── migrations/
+│   │   └── __init__.py
+│   ├── services/
+│   │   ├── __init__.py
+│   │   ├── api_client.py
+│   │   └── import_products.py
+│   └── management/
+│       ├── __init__.py
+│       └── commands/
+│           ├── __init__.py
+│           └── import_products.py
+├── pyproject.toml
+|── requirements.txt
+├── .env.example
+└── README.md
 
-## Environment Variables
+---
 
-See `.env.example` for required environment variables:
-- `SECRET_KEY`: Django secret key
-- `DEBUG`: Debug mode (True/False)
-- `ALLOWED_HOSTS`: Comma-separated list of allowed hosts
-- `DB_NAME`: Database name
-- `DB_USER`: Database user
-- `DB_PASSWORD`: Database password
-- `DB_HOST`: Database host
-- `DB_PORT`: Database port
+## Setup & Instalation
 
-## Running with Different Settings
+1. Clone repository
+git clone https://github.com/Rendbagoez93/fastprint-test.git
+cd (project folder)
 
-### Local Development
-```bash
-python manage.py runserver --settings=config.settings.local
-```
+2. Create virtual environment
+uv venv
+source .venv/bin/activate
 
-### Production
-```bash
-python manage.py runserver --settings=config.settings.production
-```
+3. Install dependencies
+uv pip install -r requirements.txt
+
+## Environment Configuration
+
+Create .env file based on .env.example:
+DJANGO_SETTINGS_MODULE=config.settings.local
+
+## Database Choice & Database Setup
+
+### Database Choice
+
+SQLite was used for local development to simplify setup and speed up development.
+The application uses Django ORM and environment-based configuration, so switching
+to PostgreSQL or MySQL requires only a database configuration change. 
+
+### Database Setup
+
+This project uses PostgreSQL as the database. Connection settings are managed
+via environment variables using django-environ. Run migrations after configuring the database:
+
+python manage.py migrate
+
+## Importing Data from API
+
+Product data is fetched from the provided API and stored using a Django management command.
+
+Run: 
+python manage.py import_products
+
+This will:
+- Fetch data from API (https://recruitment.fastprint.co.id/tes/api_tes_programmer) 
+- Create categories and statuses if they do not exist
+- Store products into the database
+
+## Running the Application
+
+python manage.py runserver 
+
+Access aplications at: 
+
+http://127.0.0.1:8000/
+
+## CRUD Usage
+
+- Add Product: Use form with validation
+- Edit Product: Update existing data
+- Delete Product: Confirmation alert required
+- Filter: Only products with status "bisa dijual" and "Semua Produk" are displayed
+
+## Notes & Assumption
+
+- SQLite is used for local development for simplicity
+- PostgreSQL configuration is prepared for production use
+- API access was verified manually (headers, response, cookies) before integration
+- Management command is used to ensure clean and repeatable data import 
+
+## Author 
+
+Created by : Rendy Herdianto

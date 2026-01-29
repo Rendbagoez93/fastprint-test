@@ -1,21 +1,32 @@
-# Python-generated files
+env/
+
+# Byte-compiled / optimized / DLL files
 __pycache__/
-*.py[oc]
+*.py[cod]
 *.pyo
 *.pyd
+
+# C extensions
+*.so
+
+# Distribution / packaging
 build/
 dist/
 wheels/
-*.egg-info
+*.egg-info/
 *.egg
+
+# Pytest
 .pytest_cache/
+
+# Ruff
 .ruff_cache/
 
 # Virtual environments
-.venv
+.venv/
 venv/
 ENV/
-env/
+
 
 # Environment variables
 .env
@@ -26,21 +37,25 @@ env/
 *.db
 db.sqlite3
 
-# Django
+# Logs
+logs/
 *.log
+
+# Static and media
 staticfiles/
 media/
+
+# Django local settings
 local_settings.py
 
-# IDE
+# IDEs and editors
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-.DS_Store
 
-# OS
+# OS generated files
 Thumbs.db
 .DS_Store
 
@@ -51,5 +66,5 @@ htmlcov/
 coverage.xml
 *.cover
 
-# UV lock file (optional, comment out if you want to commit it)
-# uv.lock
+# Lock files
+uv.lock
